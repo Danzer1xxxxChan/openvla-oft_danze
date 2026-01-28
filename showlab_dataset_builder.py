@@ -1,7 +1,7 @@
 """Showlab Dataset EE: Robot manipulation demonstrations with end-effector pose actions."""
 
+import argparse
 from typing import Iterator, Tuple, Any
-
 import os
 import glob
 import numpy as np
@@ -12,9 +12,22 @@ import tensorflow_hub as hub
 from scipy.spatial.transform import Rotation as R
 
 # Set TensorFlow Hub cache directory to use local models
-os.environ['TFHUB_CACHE_DIR'] = '/storage/xiaokangliu/models/tfhub_cache'
-tfds.core.utils.gcs_utils._is_gcs_disabled = True
-os.environ['NO_GCE_CHECK'] = 'true'
+# os.environ['TFHUB_CACHE_DIR'] = '/storage/xiaokangliu/models/tfhub_cache'
+# tfds.core.utils.gcs_utils._is_gcs_disabled = True
+# os.environ['NO_GCE_CHECK'] = 'true'
+
+def setup_environment():
+    tfds.core.utils.gcs_utils._is_gcs_disabled = True
+    os.environ['NO_GCE_CHECK'] = 'true'
+    
+    if 'TFHUB_CACHE_DIR' not in os.environ:
+        default_cache = os.path.expanduser('~/tfhub_cache')
+        os.makedirs(default_cache, exist_ok=True)
+        os.environ['TFHUB_CACHE_DIR'] = default_cache
+        print(f"TFHUB_CACHE_DIR set to: {default_cache}")
+
+# 在导入类之前执行基础配置
+setup_environment()
 
 def quaternion_to_rotation_6d(quat):
     """Convert quaternion to 6D rotation representation.
@@ -55,7 +68,8 @@ class PickNPlaceEE(tfds.core.GeneratorBasedBuilder):
       '1.4.0': 'Pick up only',
     }
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, input_path=None, **kwargs):
+        self.input_path = input_path
         super().__init__(*args, **kwargs)
         self._embed = hub.load("https://tfhub.dev/google/universal-sentence-encoder-large/5")
         # /storage/xiaokangliu/models/google-t5/t5-11b/
@@ -145,10 +159,15 @@ class PickNPlaceEE(tfds.core.GeneratorBasedBuilder):
         # You can modify this to split your data into train/val
         # For now, we'll put 80% in train and 20% in val
         # We'll use the first 10 episodes for testing
+        if self.input_path:
+            all_files = sorted(glob.glob(os.path.join(self.input_path, 'episode_*.hdf5')))
+        else:
+            all_files = sorted(glob.glob('/storage/zhijun/real_franka/pick_and_place/episode_*.hdf5'))
         # all_files = sorted(glob.glob('/storage/xiaokangliu/data/showlab/data/success/episode_*.hdf5'))
         # all_files = sorted(glob.glob('/storage/xiaokangliu/data/VLAST-Data/empty_empty/episode_*.hdf5'))
-        all_files = sorted(glob.glob('/storage/zhijun/real_franka/pick_and_place/episode_*.hdf5'))
-
+        
+        if not all_files:
+            raise ValueError(f'No data files found in the specified input path: {self.input_path}')
         # Randomly pick 3 samples for validation
         import random
         random.seed(42)  # Set seed for reproducibility
@@ -521,3 +540,46 @@ class PickNPlaceEE(tfds.core.GeneratorBasedBuilder):
         #         | beam.Map(_parse_example)
         #         | beam.Filter(lambda x: x is not None)
         # )
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Build Showlab PickNPlaceEE Dataset")
+    parser.add_argument(
+        "--data_dir",
+        type=str,
+        required=True,
+        help="Directory to save the built dataset.",
+    )
+    parser.add_argument(
+        "--input_path",
+        type=str,
+        required=True,
+        help="Path to the input data files (HDF5).",
+    )
+    parser.add_argument(
+        "--tfhub_cache",
+        type=str,
+        default=None,
+        help="Path to TensorFlow Hub cache directory.",
+    )
+    args = parser.parse_args()
+
+    if args.tfhub_cache:
+        os.environ['TFHUB_CACHE_DIR'] = args.tfhub_cache
+        os.makedirs(args.tfhub_cache, exist_ok=True)
+
+    print(f"Starting dataset build...")
+    print(f"Input path: {args.input_path}")
+    print(f"Output directory: {args.data_dir}")
+
+    builder = PickNPlaceEE(data_dir=args.data_dir, input_path=args.input_path)
+    builder.download_and_prepare()
+
+    print(f"Dataset built successfully at: {args.data_dir}")
+    print(f"Dataset info:\n{builder.info}")
+
+
+# python showlab_dataset_builder.py \
+#   --input_path "/storage/zhijun/real_franka/pick_and_place/episode_*.hdf5" \
+#   --data_dir "/storage/danze/VLA/openvla/pick_and_place_01_28/"
+#   --tfhub_cache "/storage/danze/VLA/openvla/models/tfhub_cache/"

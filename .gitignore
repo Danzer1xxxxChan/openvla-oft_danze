@@ -21,3 +21,5 @@ logs/
 venv/
 .vscode/
 .idea/
+
+*.egg-info/
