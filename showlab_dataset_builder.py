@@ -9,6 +9,7 @@ import h5py
 import tensorflow as tf
 import tensorflow_datasets as tfds
 import tensorflow_hub as hub
+from etils import epath
 from scipy.spatial.transform import Rotation as R
 
 # Set TensorFlow Hub cache directory to use local models
@@ -67,6 +68,10 @@ class PickNPlaceEE(tfds.core.GeneratorBasedBuilder):
     RELEASE_NOTES = {
       '1.4.0': 'Pick up only',
     }
+
+    @classmethod
+    def _get_pkg_dir_path(cls):
+        return epath.Path(os.path.dirname(__file__))
 
     def __init__(self, *args, input_path=None, **kwargs):
         self.input_path = input_path
@@ -160,7 +165,10 @@ class PickNPlaceEE(tfds.core.GeneratorBasedBuilder):
         # For now, we'll put 80% in train and 20% in val
         # We'll use the first 10 episodes for testing
         if self.input_path:
-            all_files = sorted(glob.glob(os.path.join(self.input_path, 'episode_*.hdf5')))
+            if '*' in self.input_path:
+                all_files = sorted(glob.glob(self.input_path))
+            else:
+                all_files = sorted(glob.glob(os.path.join(self.input_path, 'episode_*.hdf5')))
         else:
             all_files = sorted(glob.glob('/storage/zhijun/real_franka/pick_and_place/episode_*.hdf5'))
         # all_files = sorted(glob.glob('/storage/xiaokangliu/data/showlab/data/success/episode_*.hdf5'))
@@ -580,6 +588,6 @@ if __name__ == "__main__":
 
 
 # python showlab_dataset_builder.py \
-#   --input_path "/storage/zhijun/real_franka/pick_and_place/episode_*.hdf5" \
-#   --data_dir "/storage/danze/VLA/openvla/pick_and_place_01_28/"
-#   --tfhub_cache "/storage/danze/VLA/openvla/models/tfhub_cache/"
+#   --input_path "/scratch/Projects/CFP-01/CFP01-CF-033/danze/VLA/data/orange_block_hdf5/pick_and_place" \
+#   --data_dir "/scratch/Projects/CFP-01/CFP01-CF-033/danze/VLA/data/orange_block_rlds/" \
+#   --tfhub_cache "/scratch/Projects/CFP-01/CFP01-CF-033/danze/VLA/models/tfhub_cache/"
