@@ -1,0 +1,23 @@
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# datasets and ckpts
+LIBERO/
+*.pth
+*.ckpt
+*.h5
+*.bin
+
+# images and logs
+*.png
+*.jpg
+*.json
+logs/
+
+# environment
+.env
+venv/
+.vscode/
+.idea/

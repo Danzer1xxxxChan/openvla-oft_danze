@@ -1,0 +1,21 @@
+torchrun --standalone --nnodes 1 --nproc-per-node 8 vla-scripts/finetune.py \
+  --vla_path openvla/openvla-7b \
+  --data_root_dir /mnt/bn/vgfm2/test_dit/zechen/DATA/Robo/LIBERO/modified_libero_rlds \
+  --dataset_name libero_object_no_noops \
+  --run_root_dir ./ckpt_log \
+  --use_l1_regression False \
+  --use_diffusion False \
+  --use_film False \
+  --num_images_in_input 1 \
+  --use_proprio False \
+  --batch_size 8 \
+  --learning_rate 5e-4 \
+  --num_steps_before_decay 60000 \
+  --max_steps 120005 \
+  --save_freq 10000 \
+  --save_latest_checkpoint_only False \
+  --image_aug True \
+  --lora_rank 32 \
+  --wandb_project "OpenVLA-OFT" \
+  --run_id_note parallel_dec--24_acts_chunk--discrete_tok--3rd_person_img
+
